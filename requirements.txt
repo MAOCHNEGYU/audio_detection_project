@@ -1,6 +1,12 @@
 pyaudio
 numpy
-tensorflow
 scikit-learn
 librosa
 soundfile
+tensorflow==2.13.0
+pandas
+
+# GPU依赖
+tensorflow[and-cuda]==2.13.0
+
+nvidia-ml-py3

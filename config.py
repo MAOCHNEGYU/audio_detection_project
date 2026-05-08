@@ -21,7 +21,7 @@ FMAX = 8000.0                # 最高频率 (Hz)
 
 # ========== 梅尔谱 ==========
 N_MELS = 32                  # 梅尔频带数
-LOW_FREQ_CUT = 2             # 低频裁剪起始索引 (0 表示不裁剪)
+LOW_FREQ_CUT = 0             # 低频裁剪起始索引 (0 表示不裁剪)
 TOP_DB = 80.0                # 动态范围裁剪 (dB)，None 表示不裁剪
 
 # ========== MFCC ==========
@@ -51,8 +51,8 @@ MODEL_SAVE_PATH = "models/saved/audio_detector.h5"
 TFLITE_MODEL_PATH = "models/saved/audio_detector.tflite"
 
 # ========== ESC-50 数据集 ==========
-ESC_50_AUDIO_DIR = "data/ESC-50/audio"        # 解压后的 audio 目录
-ESC_50_META_PATH = "data/ESC-50/meta/esc50.csv"  # meta/esc50.csv
+ESC_50_AUDIO_DIR = "data/ESC-50-master/audio"        # 解压后的 audio 目录
+ESC_50_META_PATH = "data/ESC-50-master/meta/esc50.csv"  # meta/esc50.csv
 TARGET_CLASSES = {
     'dog':['dog'],
     'cat':['cat']
@@ -69,3 +69,18 @@ AUG_PITCH_SHIFT = [-2, 2]     # 半音偏移范围
 
 # 五折交叉验证
 N_FOLDS = 5
+
+# ========== 改进训练超参数 ==========
+USE_KD = False                        # 是否使用知识蒸馏
+KD_TEMPERATURE = 2.0                  # 蒸馏温度
+KD_ALPHA = 0.7                        # 软标签损失权重
+TEACHER_MODEL_PATH = "models/teacher/ast_tiny"  # 预训练教师模型目录（需自行下载）
+
+USE_MIXUP = True                      # 是否使用频谱 Mixup
+MIXUP_ALPHA = 0.4                     # Mixup Beta 分布参数
+
+# 训练调度
+WARMUP_EPOCHS = 5
+MAX_LEARNING_RATE = 5e-4
+MIN_LEARNING_RATE = 1e-6
+LABEL_SMOOTHING = 0.1
