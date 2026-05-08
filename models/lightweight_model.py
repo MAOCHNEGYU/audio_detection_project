@@ -127,7 +127,7 @@ def create_tiny_model(input_shape=None,
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Dropout(dropout)(x)
     outputs = layers.Dense(num_classes, activation='softmax', kernel_regularizer=reg,
-                           name='output')(x)
+                           dtype='float32',name='output')(x)
 
     model = Model(inputs=inputs, outputs=outputs, name='TinyAudioCNN')
     return model
