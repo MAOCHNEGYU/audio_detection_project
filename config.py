@@ -76,24 +76,24 @@ KD_TEMPERATURE = 2.0                  # 蒸馏温度
 KD_ALPHA = 0.7                        # 软标签损失权重
 TEACHER_MODEL_PATH = "models/teacher/ast_tiny"  # 预训练教师模型目录（需自行下载）
 
-USE_MIXUP = False                    # 是否使用频谱 Mixup
+USE_MIXUP = True                    # 是否使用频谱 Mixup
 MIXUP_ALPHA = 0.4                     # Mixup Beta 分布参数
 
 # 训练调度
 WARMUP_EPOCHS = 5
 MAX_LEARNING_RATE = 5e-4
 MIN_LEARNING_RATE = 1e-6
-LABEL_SMOOTHING = 0.1
+LABEL_SMOOTHING = 0.0
 
-# ========== 新增：GPU训练优化参数 ==========
-USE_GPU = True                       # 新增：是否启用GPU训练
-MIXED_PRECISION = True               # 新增：是否启用混合精度（FP16+FP32）
-XLA_JIT = True                       # 新增：是否启用XLA JIT编译加速
+# ========== GPU训练优化参数 ==========
+USE_GPU = True                       # 是否启用GPU训练
+MIXED_PRECISION = True               # 是否启用混合精度（FP16+FP32）
+XLA_JIT = True                       # 是否启用XLA JIT编译加速
 
 # 数据加载优化
-NUM_WORKERS = 4                      # 新增：tf.data并行加载worker数
-PREFETCH_BUFFER = 2                  # 新增：tf.data预取batch数
-CACHE_DATASET = True                 # 新增：是否缓存预处理后的数据到内存
+NUM_WORKERS = 4                      # tf.data并行加载worker数
+PREFETCH_BUFFER = 2                  # tf.data预取batch数
+CACHE_DATASET = True                 # 是否缓存预处理后的数据到内存
 
 # GPU内存增长（避免一次性占满显存）
-GPU_MEMORY_GROWTH = True             # 新增：动态增长GPU内存，而非一次性分配
+GPU_MEMORY_GROWTH = True             # 动态增长GPU内存，而非一次性分配

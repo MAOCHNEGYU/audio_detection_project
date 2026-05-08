@@ -123,72 +123,44 @@ def distillation_loss(y_true, y_pred_student, y_pred_teacher, T=2.0, alpha=0.7):
 
 
 def create_train_step(model, optimizer, use_mixed_precision=False, teacher=None):
-    """
-    创建训练步骤函数（利用@tf.function加速）。
-
-    改进：LossScaleOptimizer在外部创建并传入，避免@tf.function内动态构造。
-    修复：TF 2.13中LossScaleOptimizer的正确导入路径。
-    新增：Mixup数据增强（样本间线性混合）。
-
-    Args:
-        model: 学生模型
-        optimizer: 优化器实例（若use_mixed_precision=True则为LossScaleOptimizer包装后）
-        use_mixed_precision: 是否启用混合精度（影响梯度缩放逻辑）
-        teacher: 教师模型（可选）
-
-    Returns:
-        function: 编译为计算图的训练步骤函数
-    """
+    # Mixup 启用时关闭标签平滑（软标签已有正则效果）
     if config.USE_MIXUP:
         smoothing = 0.0
     else:
         smoothing = config.LABEL_SMOOTHING
 
-    # 损失函数（带标签平滑）
     loss_fn = tf.keras.losses.CategoricalCrossentropy(
-        from_logits=False,  # 模型输出已softmax
-        label_smoothing=smoothing
+        from_logits=False, label_smoothing=smoothing
     )
 
-    @tf.function  # 编译为TensorFlow计算图，启用GPU加速
+    @tf.function
     def train_step(X, y_true):
-        """
-        单次训练步骤（前向+反向+参数更新）。
-
-        在混合精度模式下，前向传播使用float16计算，
-        损失自动缩放防止梯度下溢，反向传播后反缩放。
-
-        Args:
-            X: 输入特征，形状(batch, time, freq, channels)
-            y_true: 真实标签，形状(batch, num_classes)
-
-        Returns:
-            tf.Tensor: 标量损失值（float32）
-        """
-        # ---------- 新增：Mixup 数据增强 ----------
+        # ---------- 概率性 Mixup ----------
         if config.USE_MIXUP and config.MIXUP_ALPHA > 0:
-            # 从 Beta 分布采样混合比例 lambda
-            lam = tf.cast(
-                tf.random.gamma(shape=[], alpha=config.MIXUP_ALPHA) /
-                (tf.random.gamma(shape=[], alpha=config.MIXUP_ALPHA) +
-                 tf.random.gamma(shape=[], alpha=config.MIXUP_ALPHA)),
-                tf.float32
-            )
-            # 对 batch 内样本索引随机打乱，用于配对混合
-            batch_size = tf.shape(X)[0]
-            index = tf.random.shuffle(tf.range(batch_size))
-            # 混合输入和标签
-            X_mix = lam * X + (1.0 - lam) * tf.gather(X, index)
-            y_mix = lam * y_true + (1.0 - lam) * tf.gather(y_true, index)
+            # 以 50% 的概率对当前 batch 执行 Mixup，保留纯净样本
+            if tf.random.uniform([]) < 0.5:
+                # 从 Beta 分布采样 λ（使用 Gamma 近似）
+                alpha = tf.constant(config.MIXUP_ALPHA, dtype=tf.float32)
+                gamma1 = tf.random.gamma([], alpha, dtype=tf.float32)
+                gamma2 = tf.random.gamma([], alpha, dtype=tf.float32)
+                lam = gamma1 / (gamma1 + gamma2)
+
+                # 随机打乱 batch 内样本索引
+                batch_size = tf.shape(X)[0]
+                index = tf.random.shuffle(tf.range(batch_size))
+
+                # 混合输入和标签
+                X_mix = lam * X + (1.0 - lam) * tf.gather(X, index)
+                y_mix = lam * y_true + (1.0 - lam) * tf.gather(y_true, index)
+            else:
+                X_mix = X
+                y_mix = y_true
         else:
             X_mix = X
             y_mix = y_true
 
         with tf.GradientTape() as tape:
-            # 前向传播（混合精度下自动使用float16）
             preds = model(X_mix, training=True)
-
-            # 计算损失：蒸馏或普通交叉熵（Mixup 的软标签与交叉熵兼容）
             if teacher is not None:
                 teacher_logits = teacher(X_mix, training=False)
                 loss = distillation_loss(
@@ -198,14 +170,8 @@ def create_train_step(model, optimizer, use_mixed_precision=False, teacher=None)
             else:
                 loss = loss_fn(y_mix, preds)
 
-            # 若使用混合精度，loss 会自动被 LossScaleOptimizer 缩放（外部处理）
-
-        # 计算梯度
         gradients = tape.gradient(loss, model.trainable_variables)
-
-        # 应用梯度（LossScaleOptimizer会自动反缩放）
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
         return tf.reduce_mean(loss)
 
     return train_step
@@ -430,7 +396,16 @@ def main():
     # 转换为TFLite格式（端侧部署用）
     print("转换为TFLite格式...")
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]  # 启用默认优化
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+
+    # 允许 TensorFlow Select 算子（支持 GRU 等需要 TensorArray 的层）
+    converter.target_spec.supported_ops = [
+        tf.lite.OpsSet.TFLITE_BUILTINS,
+        tf.lite.OpsSet.SELECT_TF_OPS
+    ]
+    # 禁用 TensorList 的静态形状要求
+    converter._experimental_lower_tensor_list_ops = False
+
     tflite_model = converter.convert()
 
     with open(config.TFLITE_MODEL_PATH, 'wb') as f:
