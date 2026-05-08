@@ -1,0 +1,6 @@
+pyaudio
+numpy
+tensorflow
+scikit-learn
+librosa
+soundfile
