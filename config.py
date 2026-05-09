@@ -1,6 +1,6 @@
 """
 全局配置参数 - 含实验控制开关
-v1.1: 关闭所有可能破坏脉冲特征的增强，提升基线稳定性
+v1.3: 添加真实数据微调参数，降低阈值便于测试
 """
 # ========== 音频采集 ==========
 SAMPLE_RATE = 16000
@@ -46,16 +46,22 @@ TARGET_CLASSES = {
 }
 CLASS_NAMES = list(TARGET_CLASSES.keys()) + ['other']
 NUM_CLASSES = len(CLASS_NAMES)
-OTHER_RATIO = 0.5   # 保持 target 和 other 样本数量平衡
+OTHER_RATIO = 0.5
 
-# ========== 数据增强参数（v1.1 全部关闭） ==========
-AUG_SPEC_AUGMENT = False    # 关闭频谱增强
-AUG_NOISE_SNR = [30, 40]    # 极高的 SNR（几乎听不见噪声）
-AUG_TIME_STRETCH = [1.0, 1.0]   # 不拉伸
-AUG_PITCH_SHIFT = [0, 0]        # 不移调
-AUG_RANDOM_GAIN = False         # 新增：关闭随机增益
+# ========== 数据增强参数（v1.3 微调时重新启用部分增强） ==========
+AUG_SPEC_AUGMENT = False
+AUG_NOISE_SNR = [30, 40]            # 微调时仍用极弱噪声
+AUG_TIME_STRETCH = [1.0, 1.0]       # 不用拉伸
+AUG_PITCH_SHIFT = [0, 0]            # 微调时动态开启
+AUG_RANDOM_GAIN = False
 
-# 交叉验证
+# v1.3 真实数据微调参数
+REAL_CLOCK_PATH = "data/real_clock_30s.wav"
+REAL_CLOCK_RATIO = 0.3               # 真实滴答声占目标类的比例
+FINETUNE_EPOCHS = 15                 # 微调轮数
+FINETUNE_LEARNING_RATE = 1e-4        # 较小的学习率
+
+# 交叉验证（微调时不使用）
 N_FOLDS = 5
 
 # ========== 训练超参数 ==========
@@ -64,13 +70,13 @@ KD_TEMPERATURE = 2.0
 KD_ALPHA = 0.7
 TEACHER_MODEL_PATH = "models/teacher/ast_tiny"
 
-USE_MIXUP = False           # 关闭 Mixup
+USE_MIXUP = False
 MIXUP_ALPHA = 0.4
 
 WARMUP_EPOCHS = 5
 MAX_LEARNING_RATE = 5e-4
 MIN_LEARNING_RATE = 1e-6
-LABEL_SMOOTHING = 0.0       # 关闭标签平滑，使用硬标签
+LABEL_SMOOTHING = 0.0
 
 # GPU选项
 USE_GPU = True
@@ -85,7 +91,7 @@ GPU_MEMORY_GROWTH = True
 BACKGROUND_FILES = [
     "data/my_background.wav",
 ]
-BACKGROUND_RATIO = 0.3   # 保留背景音混合比例，但用于 other 类构建
+BACKGROUND_RATIO = 0.3
 
 # ========== 开集识别方法选择 ==========
 OOD_METHOD = "msp"
@@ -102,11 +108,11 @@ GMM_THRESHOLD_PATH = "config/gmm_threshold.json"
 GMM_CONFIDENCE_LEVEL = 0.95
 
 # 动态阈值参数
-USE_DYNAMIC_THRESHOLD = True
+USE_DYNAMIC_THRESHOLD = False
 ENV_CALIBRATION_SECONDS = 15
 THRESHOLD_STD_MULTIPLIER = 3.0
 THRESHOLD_SAVE_PATH = "config/threshold.json"
-FIXED_CONFIDENCE_THRESHOLD = 0.7
+FIXED_CONFIDENCE_THRESHOLD = 0.60      # 微调后临时降低，便于测试
 
 # 量化实验选项
 QUANTIZATION_ENABLED = False
