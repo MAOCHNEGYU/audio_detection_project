@@ -1,99 +1,112 @@
 """
-全局配置参数
-所有模块共用的采样率、帧长、特征参数等均在此定义，方便统一修改。
+全局配置参数 - 含实验控制开关
+v1.1: 关闭所有可能破坏脉冲特征的增强，提升基线稳定性
 """
-
 # ========== 音频采集 ==========
-SAMPLE_RATE = 16000          # 采样率 (Hz)
-CHANNELS = 1                 # 声道数 (单声道)
-SAMPLE_WIDTH = 2             # 位宽 (字节)，16bit = 2
-FRAMES_PER_BUFFER = 512     # PortAudio 每次回调的帧数 (约32ms 音频)
-SEGMENT_SECONDS = 1.0        # 每次处理的音频时长 (秒)
-SEGMENT_SIZE = int(SAMPLE_RATE * SEGMENT_SECONDS)  # 16000 帧
-QUEUE_MAX_SIZE = 100         # 音频队列最大缓存段数
+SAMPLE_RATE = 16000
+CHANNELS = 1
+SAMPLE_WIDTH = 2
+FRAMES_PER_BUFFER = 512
+SEGMENT_SECONDS = 1.0
+SEGMENT_SIZE = int(SAMPLE_RATE * SEGMENT_SECONDS)
+QUEUE_MAX_SIZE = 100
 
-# ========== 特征提取通用 ==========
-N_FFT = 512                  # FFT 点数
-WIN_LENGTH = 400             # 窗长 (帧长)，400点 = 25ms @16kHz
-HOP_LENGTH = 320             # 帧移，320点 = 20ms @16kHz，产生约49帧/秒
-FMIN = 20.0                  # 最低频率 (Hz)
-FMAX = 8000.0                # 最高频率 (Hz)
-
-# ========== 梅尔谱 ==========
-N_MELS = 32                  # 梅尔频带数
-LOW_FREQ_CUT = 0             # 低频裁剪起始索引 (0 表示不裁剪)
-TOP_DB = 80.0                # 动态范围裁剪 (dB)，None 表示不裁剪
-
-# ========== MFCC ==========
-N_MFCC = 20                  # 保留的 MFCC 系数个数
-
-# ========== 原始波形 ==========
-RAW_TARGET_LENGTH = 8000     # 下采样后/裁切后的采样点数
-RAW_FRAME_LEN = 400          # 分帧时的帧长
-RAW_HOP_LEN = 160            # 分帧时的帧移
+# ========== 特征提取 ==========
+N_FFT = 512
+WIN_LENGTH = 400
+HOP_LENGTH = 320
+FMIN = 20.0
+FMAX = 8000.0
+N_MELS = 32
+LOW_FREQ_CUT = 0
+TOP_DB = 80.0
 
 # ========== 轻量化模型 ==========
-MODEL_INPUT_SHAPE = (49, 32, 1)  # 对应 log-mel: 49帧, 32梅尔频带, 1通道
-
-
-# MobileNetV3 风格瓶颈参数
-MODEL_WIDTH_MULTIPLIER = 0.5     # 宽度系数，控制通道数（降低参数量）
-MODEL_DROPOUT = 0.3              # Dropout 比率
-GRU_UNITS = 64                   # GRU 隐藏单元数
+MODEL_INPUT_SHAPE = (49, 32, 1)
+MODEL_WIDTH_MULTIPLIER = 0.5
+MODEL_DROPOUT = 0.3
+GRU_UNITS = 64
 
 # 训练相关
 BATCH_SIZE = 32
 LEARNING_RATE = 1e-3
 EPOCHS = 50
-TRAIN_DATA_DIR = "data/train"    # 训练数据路径（需自行组织）
+TRAIN_DATA_DIR = "data/train"
 VAL_DATA_DIR = "data/val"
 MODEL_SAVE_PATH = "models/saved/audio_detector.h5"
 TFLITE_MODEL_PATH = "models/saved/audio_detector.tflite"
 
 # ========== ESC-50 数据集 ==========
-ESC_50_AUDIO_DIR = "data/ESC-50-master/audio"        # 解压后的 audio 目录
-ESC_50_META_PATH = "data/ESC-50-master/meta/esc50.csv"  # meta/esc50.csv
+ESC_50_AUDIO_DIR = "data/ESC-50-master/audio"
+ESC_50_META_PATH = "data/ESC-50-master/meta/esc50.csv"
+
+# 目标类别（可自由修改）
 TARGET_CLASSES = {
-    'dog':['dog'],
-    'cat':['cat']
+    'clock_tick': ['clock_tick']
 }
-
-CLASS_NAMES = list(TARGET_CLASSES.keys())
+CLASS_NAMES = list(TARGET_CLASSES.keys()) + ['other']
 NUM_CLASSES = len(CLASS_NAMES)
+OTHER_RATIO = 0.5   # 保持 target 和 other 样本数量平衡
 
-# 数据增强参数
-AUG_SPEC_AUGMENT = True      # 时间/频率掩蔽
-AUG_NOISE_SNR = [0, 15]      # 信噪比范围 (dB)
-AUG_TIME_STRETCH = [0.9, 1.1] # 时间拉伸系数范围
-AUG_PITCH_SHIFT = [-2, 2]     # 半音偏移范围
+# ========== 数据增强参数（v1.1 全部关闭） ==========
+AUG_SPEC_AUGMENT = False    # 关闭频谱增强
+AUG_NOISE_SNR = [30, 40]    # 极高的 SNR（几乎听不见噪声）
+AUG_TIME_STRETCH = [1.0, 1.0]   # 不拉伸
+AUG_PITCH_SHIFT = [0, 0]        # 不移调
+AUG_RANDOM_GAIN = False         # 新增：关闭随机增益
 
-# 五折交叉验证
+# 交叉验证
 N_FOLDS = 5
 
-# ========== 改进训练超参数 ==========
-USE_KD = False                        # 是否使用知识蒸馏
-KD_TEMPERATURE = 2.0                  # 蒸馏温度
-KD_ALPHA = 0.7                        # 软标签损失权重
-TEACHER_MODEL_PATH = "models/teacher/ast_tiny"  # 预训练教师模型目录（需自行下载）
+# ========== 训练超参数 ==========
+USE_KD = False
+KD_TEMPERATURE = 2.0
+KD_ALPHA = 0.7
+TEACHER_MODEL_PATH = "models/teacher/ast_tiny"
 
-USE_MIXUP = True                    # 是否使用频谱 Mixup
-MIXUP_ALPHA = 0.4                     # Mixup Beta 分布参数
+USE_MIXUP = False           # 关闭 Mixup
+MIXUP_ALPHA = 0.4
 
-# 训练调度
 WARMUP_EPOCHS = 5
 MAX_LEARNING_RATE = 5e-4
 MIN_LEARNING_RATE = 1e-6
-LABEL_SMOOTHING = 0.0
+LABEL_SMOOTHING = 0.0       # 关闭标签平滑，使用硬标签
 
-# ========== GPU训练优化参数 ==========
-USE_GPU = True                       # 是否启用GPU训练
-MIXED_PRECISION = True               # 是否启用混合精度（FP16+FP32）
-XLA_JIT = True                       # 是否启用XLA JIT编译加速
+# GPU选项
+USE_GPU = True
+MIXED_PRECISION = True
+XLA_JIT = True
+NUM_WORKERS = 4
+PREFETCH_BUFFER = 2
+CACHE_DATASET = False
+GPU_MEMORY_GROWTH = True
 
-# 数据加载优化
-NUM_WORKERS = 4                      # tf.data并行加载worker数
-PREFETCH_BUFFER = 2                  # tf.data预取batch数
-CACHE_DATASET = True                 # 是否缓存预处理后的数据到内存
+# ========== 自定义背景音 ==========
+BACKGROUND_FILES = [
+    "data/my_background.wav",
+]
+BACKGROUND_RATIO = 0.3   # 保留背景音混合比例，但用于 other 类构建
 
-# GPU内存增长（避免一次性占满显存）
-GPU_MEMORY_GROWTH = True             # 动态增长GPU内存，而非一次性分配
+# ========== 开集识别方法选择 ==========
+OOD_METHOD = "msp"
+
+# 能量分数参数
+ENERGY_TEMPERATURE = 1.0
+ENERGY_THRESHOLD = None
+ENERGY_CALIB_PATH = "config/energy_threshold.json"
+
+# GMM参数
+GMM_N_COMPONENTS = 3
+GMM_MODEL_PATH = "models/saved/gmm_model.pkl"
+GMM_THRESHOLD_PATH = "config/gmm_threshold.json"
+GMM_CONFIDENCE_LEVEL = 0.95
+
+# 动态阈值参数
+USE_DYNAMIC_THRESHOLD = True
+ENV_CALIBRATION_SECONDS = 15
+THRESHOLD_STD_MULTIPLIER = 3.0
+THRESHOLD_SAVE_PATH = "config/threshold.json"
+FIXED_CONFIDENCE_THRESHOLD = 0.7
+
+# 量化实验选项
+QUANTIZATION_ENABLED = False

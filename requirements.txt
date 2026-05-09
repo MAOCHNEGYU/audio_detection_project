@@ -5,4 +5,8 @@ librosa
 soundfile
 tensorflow==2.13.0
 pandas
+sounddevice
 nvidia-ml-py3
+joblib
+scipy
+matplotlib
