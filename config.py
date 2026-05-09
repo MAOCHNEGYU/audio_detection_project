@@ -58,8 +58,8 @@ AUG_RANDOM_GAIN = False
 # v1.3 真实数据微调参数
 REAL_CLOCK_PATH = "data/real_clock_30s.wav"
 REAL_CLOCK_RATIO = 0.3               # 真实滴答声占目标类的比例
-FINETUNE_EPOCHS = 15                 # 微调轮数
-FINETUNE_LEARNING_RATE = 1e-4        # 较小的学习率
+FINETUNE_EPOCHS = 30                 # 微调轮数
+FINETUNE_LEARNING_RATE = 5e-5        # 较小的学习率
 
 # 交叉验证（微调时不使用）
 N_FOLDS = 5
@@ -112,7 +112,7 @@ USE_DYNAMIC_THRESHOLD = False
 ENV_CALIBRATION_SECONDS = 15
 THRESHOLD_STD_MULTIPLIER = 3.0
 THRESHOLD_SAVE_PATH = "config/threshold.json"
-FIXED_CONFIDENCE_THRESHOLD = 0.60      # 微调后临时降低，便于测试
+FIXED_CONFIDENCE_THRESHOLD = 0.55     # 微调后临时降低，便于测试
 
 # 量化实验选项
 QUANTIZATION_ENABLED = False
